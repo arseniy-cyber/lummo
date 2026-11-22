@@ -5,47 +5,67 @@ const mobile=matchMedia('(max-width:780px)');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const debug={version:'10.18',water:false,services:0,servicesFlipped:0,lab:'unchanged',bookMark:false};
 window.LUMO_V1018_DEBUG=()=>({...debug});
-const phoneHint=$('.gltf-scene--phone .phone-drag-hint');if(mobile.matches&&phoneHint)phoneHint.textContent='Проведи пальцем, чтобы повернуть';
+const phoneHint=$('.gltf-scene--phone .phone-drag-hint');if(phoneHint)phoneHint.textContent=mobile.matches?'Проведи пальцем, чтобы повернуть':'Поверни мышью или пальцем';
 const water=$('.film-stage__video');if(water){debug.water=!!water.querySelector('source[src*="green-texture.mp4"]');water.muted=true;water.playsInline=true;water.play().catch(()=>{});document.addEventListener('visibilitychange',()=>{if(!document.hidden)water.play().catch(()=>{})});}
 // Cards: replace system orb with a line-drawn SVG in the approved action treatment.
-const arrow='<span class="v1018-action-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 18 18 6M8 6h10v10"/></svg></span>';
+const arrow='<span class="v1018-action-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h14"/><path d="M13 5l7 7-7 7"/></svg></span>';
 for(const action of $$('.selected__reveal-action,.portfolio-tile__open')){
  const old=$('.portfolio-tile__orb,.v1017-arrow,.v1015-arrow',action);old?.remove();
  if(!$('.v1018-action-arrow',action))action.insertAdjacentHTML('beforeend',arrow);
 }
-// On mobile, old site builds two different kinds of flip targets. Use a single capture
-// handler on buttons, once for each physical card face; no duplicated listeners.
+// On mobile, services should behave exactly like the work cards: one clear
+// flip button on the front, one return button on the back, and no extra clones.
 if(mobile.matches){
+ const flipIcon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 10.5a7.5 7.5 0 1 0-2.8 6.1"/><path d="M19.5 4v6.5H13"/></svg>';
  for(const card of $$('.service-flip')){
   const front=$('.service-flip__front',card),back=$('.service-flip__back',card),orig=$('.service-flip__toggle',card);
   if(!front||!back||!orig)continue;
-  card.classList.add('v1016-service','v1018-service');
-  // Old buttons are retained but hidden to preserve older desktop mechanics.
-  orig.tabIndex=-1;orig.setAttribute('aria-hidden','true');
-  $$('.v1017-service-turn--back,.v1016-service-return',card).forEach(btn=>{btn.hidden=true;btn.tabIndex=-1;btn.setAttribute('aria-hidden','true')});
-  const make=(face,backward)=>{
-   const b=document.createElement('button');b.type='button';b.className='v1018-service-control';
-   b.setAttribute('aria-label',backward?'Вернуть лицевую сторону':'Посмотреть услугу');
-   b.innerHTML=backward?'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 7 7 17M7 7v10h10"/></svg>':'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>';
-   face.append(b);return b;
+  card.classList.add('v1016-service','v1018-service-clean');
+  $$('.v1018-service-control,.v1016-service-return',card).forEach(btn=>btn.remove());
+  const frontHint=$('.service-flip__front-hint',front); if(frontHint) frontHint.hidden=true;
+  const frontBtn=orig.cloneNode(false);
+  frontBtn.type='button';
+  frontBtn.className='service-flip__toggle v1017-service-turn v1018-service-turn';
+  frontBtn.removeAttribute('aria-hidden'); frontBtn.tabIndex=0; frontBtn.innerHTML=flipIcon;
+  frontBtn.setAttribute('aria-label','Перевернуть карточку услуги');
+  orig.replaceWith(frontBtn);
+  if(frontBtn.parentElement!==front) front.append(frontBtn);
+  let backBtn=$('.v1017-service-turn--back',back);
+  if(backBtn){
+   const cleanBack=backBtn.cloneNode(false);
+   cleanBack.type='button';
+   cleanBack.className='v1017-service-turn v1017-service-turn--back v1018-service-turn';
+   cleanBack.setAttribute('aria-label','Вернуться к лицевой стороне');
+   cleanBack.innerHTML=flipIcon;
+   backBtn.replaceWith(cleanBack);
+   backBtn=cleanBack;
+  }else{
+   backBtn=document.createElement('button');
+   backBtn.type='button';
+   backBtn.className='v1017-service-turn v1017-service-turn--back v1018-service-turn';
+   backBtn.setAttribute('aria-label','Вернуться к лицевой стороне');
+   backBtn.innerHTML=flipIcon;
+   back.append(backBtn);
+  }
+  const set=(on)=>{
+   card.classList.toggle('is-flipped',on);
+   card.classList.toggle('manual-front',!on);
+   card.setAttribute('aria-expanded',String(on));
+   frontBtn.setAttribute('aria-expanded',String(on));
+   frontBtn.tabIndex=on?-1:0; backBtn.tabIndex=on?0:-1;
+   debug.servicesFlipped++;
   };
-  if($('.v1018-service-control',front))continue;
-  const f=make(front,false),b=make(back,true);
-  const set=on=>{
-   card.classList.toggle('is-flipped',on);card.classList.toggle('manual-front',!on);
-   card.setAttribute('aria-expanded',String(on));f.setAttribute('aria-expanded',String(on));
-   f.tabIndex=on?-1:0;b.tabIndex=on?0:-1;debug.servicesFlipped++;
-  };
-  f.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(true)});
-  b.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(false)});
-  // Older versions attach click-to-flip to the entire card. Limit mobile flipping
-  // to the controls, so touching text never causes unwanted reversing.
-  card.addEventListener('click',e=>{if(e.target.closest('a'))return;if(!e.target.closest('.v1018-service-control')){e.stopImmediatePropagation();e.preventDefault();}},true);
-  // Keyboard toggles do not fire old card handlers twice.
-  card.addEventListener('keydown',e=>{if(e.target===card&&(e.key==='Enter'||e.key===' ')){e.preventDefault();e.stopImmediatePropagation();set(!card.classList.contains('is-flipped'));}},true);
-  set(false);debug.services++;
+  frontBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(true)});
+  backBtn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(false)});
+  card.addEventListener('click',e=>{
+   if(e.target.closest('a'))return;
+   if(!e.target.closest('.v1017-service-turn')){e.preventDefault();e.stopImmediatePropagation();}
+  },true);
+  card.addEventListener('keydown',e=>{if(e.key==='Escape'&&card.classList.contains('is-flipped')){e.preventDefault();set(false);frontBtn.focus({preventScroll:true});}},true);
+  set(false); debug.services++;
  }
 }
+
 // The book mark is an original engraved Lumo stroke (not a copied third-party logo).
 debug.bookMark=!!$('.v1017-cover-mark svg');
 // Desk / tablet: keep all six AURA settings and its original controls intact.

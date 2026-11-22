@@ -116,3 +116,53 @@ body.home.lumo-v1018 .chapter--statement .v8-statement-transition{display:none!i
 @media(min-width:781px){
  body.lumo-v1018.lab-parent .lab-viewer__stage{width:var(--v1018-stage-width,100%)!important;height:var(--v1018-stage-height,550px)!important}
 }
+
+
+/* LUMO SITES 10.19 mobile-only touch-up overrides requested after phone review. */
+@media(max-width:780px){
+ body.lumo-v1018.home .v8-macbook .gltf-scene--macbook{width:min(108%,720px)!important;height:min(50svh,495px)!important;min-height:250px!important;margin:0 auto!important}
+ body.lumo-v1018.home .v8-macbook .v1016-device-hint{max-width:92%!important}
+ body.lumo-v1018.home .v8-device .phone-drag-hint{
+  left:43%!important;right:auto!important;transform:translateX(-50%)!important;bottom:12px!important;
+  width:max-content!important;max-width:min(78vw,310px)!important;padding:0!important;
+  background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;
+  text-shadow:0 2px 10px rgba(0,0,0,.38)!important;white-space:normal!important;line-height:1.32!important;
+ }
+ body.lumo-v1018 .v1018-action-arrow{width:28px;height:28px!important}
+ body.lumo-v1018 .v1018-action-arrow svg{width:16px!important;height:16px!important;stroke-width:1.9!important}
+ body.lumo-v1018 .service-flip__front-hint{display:none!important}
+ body.lumo-v1018 .service-flip__front .service-flip__toggle,
+ body.lumo-v1018 .service-flip__back .v1017-service-turn--back,
+ body.lumo-v1018 .service-flip__front .v1018-service-turn,
+ body.lumo-v1018 .service-flip__back .v1018-service-turn{
+  position:absolute!important;top:13px!important;right:13px!important;left:auto!important;bottom:auto!important;
+  display:grid!important;place-items:center!important;z-index:25!important;width:40px!important;height:40px!important;
+  min-width:40px!important;min-height:40px!important;padding:0!important;margin:0!important;
+  border-radius:12px!important;background:rgba(13,36,28,.93)!important;border:1px solid rgba(230,238,221,.37)!important;
+  color:#edf3e6!important;box-shadow:0 10px 23px rgba(0,0,0,.13)!important;opacity:1!important;visibility:visible!important;
+  transform:none!important;transition:background .18s ease,box-shadow .18s ease!important;cursor:pointer!important;touch-action:manipulation!important;
+ }
+ body.lumo-v1018 .service-flip__front .service-flip__toggle:hover,
+ body.lumo-v1018 .service-flip__back .v1017-service-turn--back:hover,
+ body.lumo-v1018 .service-flip__front .v1018-service-turn:hover,
+ body.lumo-v1018 .service-flip__back .v1018-service-turn:hover{background:#234e38!important}
+ body.lumo-v1018 .service-flip__front .service-flip__toggle svg,
+ body.lumo-v1018 .service-flip__back .v1017-service-turn--back svg,
+ body.lumo-v1018 .service-flip__front .v1018-service-turn svg,
+ body.lumo-v1018 .service-flip__back .v1018-service-turn svg{width:19px!important;height:19px!important;display:block}
+ body.lumo-v1018 .service-flip__toggle::before,body.lumo-v1018 .service-flip__toggle::after{content:none!important}
+ body.lumo-v1018 .v1018-service-control{display:none!important}
+ body.lumo-v1018 .v1016-book-cover{
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;padding:30px 24px!important;
+ }
+ body.lumo-v1018 .v1016-book-cover > *{text-align:center!important;margin-inline:auto!important}
+ body.lumo-v1018 .v1016-book-cover strong{font-size:clamp(38px,9vw,54px)!important;line-height:1.04!important}
+ body.lumo-v1018 .v1016-book-cover__subtitle{max-width:22ch!important}
+ body.lumo-v1018 .v1017-cover-mark{display:grid!important;place-items:center!important}
+ body.lumo-v1018 .v1017-cover-mark svg{display:none!important}
+ body.lumo-v1018 .v1017-cover-mark::before{
+  content:'LS';display:block;font-size:clamp(24px,5.4vw,30px);font-weight:700;letter-spacing:.08em;line-height:1;
+  color:#dac49c;text-shadow:0 1px 0 rgba(255,240,196,.11);
+ }
+}
