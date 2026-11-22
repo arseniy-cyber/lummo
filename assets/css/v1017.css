@@ -12,9 +12,11 @@ html.v1017-awaiting .v1017-loader{opacity:1;visibility:visible;pointer-events:au
 @keyframes v1017-loader-move{from{transform:translateX(-100%)}to{transform:translateX(350%)}}
 html.v1017-awaiting body{overflow:hidden}
 /* Guarantee the home page has no ivory/white fallback when the active chapter changes. */
-body.lumo-v1017.home,body.lumo-v1017.home .film{background:#091c16!important}
+body.lumo-v1017.home{background:#091c16!important}
+/* Preserve the original V10.16 moving green-water video behind the film. */
+body.lumo-v1017.home .film{background:transparent!important}
 body.lumo-v1017.home .film-stage,body.lumo-v1017.home[data-skin="ivory"] .film-stage,body.lumo-v1017.home[data-skin="emerald"] .film-stage{background-color:#0a2019!important}
-body.lumo-v1017.home .film-stage__gradient{background:linear-gradient(90deg,rgba(4,19,14,.54),rgba(9,27,20,.26),rgba(20,31,26,.30))!important}
+/* Video overlay gradient: inherited unchanged from V10.16. */
 body.lumo-v1017.home .chapter--studio,body.lumo-v1017.home .chapter--device{background-color:transparent!important;background-image:none!important}
 body.lumo-v1017.home .chapter--studio::after,body.lumo-v1017.home .chapter--device::after{background:transparent!important;box-shadow:none!important}
 body.lumo-v1017.home .film-stage__video{background:#0a2019}
@@ -172,3 +174,6 @@ body.lumo-v1017 .v1016-book .storybook__controls>[data-story-status]{min-width:4
 /* Consistent outlined arrows on macOS/iOS/Android; no emoji font substitution. */
 .v1017-arrow{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;line-height:0;flex:none}
 .v1017-arrow svg{width:1em;height:1em;overflow:visible;display:block;stroke:currentColor;fill:none}
+
+/* Keep the original water moving even when the scroll scene switches to the ivory skin. */
+body.lumo-v1017.home[data-skin="ivory"] .film-stage__video{opacity:.29!important}

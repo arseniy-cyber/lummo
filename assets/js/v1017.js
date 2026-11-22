@@ -9,7 +9,7 @@ window.LUMO_V1017_DEBUG=()=>({...status});
 
 // First visit uses an actual readiness gate, without an invented progress percentage.
 const loader=$('.v1017-loader');
-if(loader){
+if(loader && document.documentElement.classList.contains('v1017-awaiting')){
  status.loader=true;
  const state=$('#v1017-loading-status'),start=performance.now();
  const home=document.body.classList.contains('home');
@@ -112,7 +112,7 @@ if(book){
 // Laboratory device preview: same six selections, but a correctly sized virtual
 // viewport for ALL host devices. The stage itself shrinks; no blank white panel.
 const labStage=$('#lab-stage'),labFrame=$('#lab-frame');
-if(labStage&&labFrame){
+if(labStage&&labFrame&&matchMedia('(max-width:780px)').matches){
  const viewer=labStage.closest('.lab-viewer');const modes={desktop:[1280,1180],tablet:[820,1260],phone:[390,1680]};let mode=$('.lab-viewer__devices .is-active')?.dataset.device||'desktop';
  let framePending=0;
  const apply=()=>{
