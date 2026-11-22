@@ -91,9 +91,13 @@
  void main(){
   vec3 base=texture2D(uTexture,vUV).rgb;
   vec3 n=normalize(vNorm);
-  float lit=max(dot(n,normalize(vec3(-.4,.65,.8))),0.0);
-  float fill=max(dot(n,normalize(vec3(.8,.25,-.1))),0.0);
-  vec3 col=base*(.73+.38*lit+.12*fill);
+  float key=max(dot(n,normalize(vec3(-.36,.64,.79))),0.0);
+  float fill=max(dot(n,normalize(vec3(.82,.22,-.1))),0.0);
+  float under=max(dot(n,normalize(vec3(0.0,-0.92,0.38))),0.0);
+  float rim=pow(1.0-max(dot(n,normalize(vec3(0.0,0.0,1.0))),0.0),2.0);
+  vec3 col=base*(.77+.31*key+.11*fill);
+  col+=vec3(0.27,0.21,0.11)*under*0.58;
+  col+=vec3(0.13,0.11,0.08)*rim*0.15;
   col=mix(col,col*vec3(1.06,1.04,.96),.25);
   gl_FragColor=vec4(col,1.0);
  }`;
@@ -149,10 +153,10 @@
    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
    const t=reduce?0:timestamp*0.001;
    const phase=index*.73;
-   const yaw=(t*.23+phase)%(Math.PI*2);
+   const yaw=-0.22 + Math.sin(t*.58+phase)*0.92;
    gl.uniformMatrix4fv(loc.uProjection,false,projection(width/height));
    gl.uniform1f(loc.uRotation,yaw);
-   gl.uniform1f(loc.uPitch,.18+.06*Math.sin(phase+t*.3));
+   gl.uniform1f(loc.uPitch,.17+.045*Math.sin(phase+t*.28));
    gl.drawElements(gl.TRIANGLES,mesh.idx.length,gl.UNSIGNED_SHORT,0);
    if(!canvas.closest('.money-stage').classList.contains('money-stage--ready'))canvas.closest('.money-stage').classList.add('money-stage--ready');
    DEBUG.draws++;
