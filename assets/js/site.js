@@ -29,3 +29,54 @@ const frame=q('#lab-frame');if(frame){const fields=qa('[data-lab]'),deviceBtns=q
  q('#lab-copy')?.addEventListener('click',async()=>{const url=new URL(location.href);Object.entries(state).forEach(([k,v])=>url.searchParams.set(k,v));try{await navigator.clipboard.writeText(url.href);q('#lab-copy').textContent='Ссылка скопирована'}catch(e){q('#lab-copy').textContent='Не удалось скопировать'}});push();}
 // Page entry without intrusive loading overlay; navigation still works with JS disabled.
 })();
+
+/* V10.24 — unify arrow strokes across all pages while preserving each link and handler. */
+(() => {
+ 'use strict';
+ const paths={
+  right:'M4.5 12H19.5 M13 5.5L19.5 12 13 18.5',
+  left:'M19.5 12H4.5 M11 5.5L4.5 12 11 18.5',
+  up:'M12 19.5V4.5 M5.5 11L12 4.5 18.5 11',
+  down:'M12 4.5V19.5 M5.5 13L12 19.5 18.5 13',
+  upright:'M5.5 18.5L18.5 5.5 M9.5 5.5H18.5V14.5',
+  upleft:'M18.5 18.5L5.5 5.5 M5.5 14.5V5.5H14.5',
+  downright:'M5.5 5.5L18.5 18.5 M9.5 18.5H18.5V9.5',
+  downleft:'M18.5 5.5L5.5 18.5 M5.5 9.5V18.5H14.5'
+ };
+ const make=(direction)=>{
+  const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('fill','none');
+  icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','1.8');
+  icon.setAttribute('stroke-linecap','round');icon.setAttribute('stroke-linejoin','round');
+  icon.setAttribute('aria-hidden','true');icon.classList.add('lumo-arrow-v1024');
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',paths[direction]||paths.right);icon.append(path);return icon;
+ };
+ const directionOf=(d)=>{
+  if(d.includes('M20 12'))return 'left';
+  if(d.includes('M12 19'))return 'up';
+  if(d.includes('M12 5'))return 'down';
+  if(d.includes('M19 19'))return 'upleft';
+  if(d.includes('M19 5L5'))return 'downleft';
+  if(d.includes('M5 5l14')||d.includes('M5 5l14'))return 'downright';
+  if(d.includes('M5 19')||d.includes('M7 17')||d.includes('M6 18'))return 'upright';
+  return 'right';
+ };
+ const apply=()=>{
+  document.querySelectorAll('.price-card__flip--front').forEach(el=>el.querySelector('svg')?.replaceWith(make('right')));
+  document.querySelectorAll('.price-card__flip--back').forEach(el=>el.querySelector('svg')?.replaceWith(make('left')));
+  document.querySelectorAll('.price-card__link svg').forEach(el=>el.replaceWith(make('right')));
+  document.querySelectorAll('.v1015-arrow,.v1017-arrow svg,.v1018-action-arrow svg,.selected__reveal-action svg,.portfolio-tile__open svg,.v1017-service-turn svg,.v1018-service-turn svg').forEach(svg=>{
+   if(svg.classList.contains('lumo-arrow-v1024'))return;
+   const d=svg.querySelector('path')?.getAttribute('d')||'';
+   const dir=directionOf(d);
+   const normalized=make(dir);
+   normalized.classList.add(...svg.classList);
+   normalized.setAttribute('width',svg.getAttribute('width')||'17');
+   normalized.setAttribute('height',svg.getAttribute('height')||'17');
+   svg.replaceWith(normalized);
+  });
+ };
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});
+ else apply();
+})();

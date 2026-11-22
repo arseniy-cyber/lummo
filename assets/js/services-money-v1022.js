@@ -74,7 +74,7 @@
  }
  const vert=`attribute vec3 aPosition,aNormal;attribute vec2 aUV;
  uniform mat4 uProjection;uniform float uRotation,uPitch;
- varying vec2 vUV;varying vec3 vNorm;
+ varying vec2 vUV;varying vec3 vNorm;varying vec3 vPosition;
  void main(){
   vec3 p=aPosition/111.0;vec3 n=aNormal;
   float c=cos(uRotation),s=sin(uRotation);
@@ -83,23 +83,36 @@
   float x=cos(uPitch),y=sin(uPitch);
   p=vec3(p.x,p.y*x-p.z*y,p.y*y+p.z*x);
   n=vec3(n.x,n.y*x-n.z*y,n.y*y+n.z*x);
-  vUV=aUV;vNorm=n;
+  vUV=aUV;vNorm=n;vPosition=p;
   gl_Position=uProjection*vec4(p.x,p.y,p.z-4.15,1.0);
  }`;
- const frag=`precision mediump float;uniform sampler2D uTexture;
- varying vec2 vUV;varying vec3 vNorm;
+ const frag=`precision mediump float;
+ uniform sampler2D uTexture;
+ varying vec2 vUV;varying vec3 vNorm;varying vec3 vPosition;
  void main(){
-  vec3 base=texture2D(uTexture,vUV).rgb;
-  vec3 n=normalize(vNorm);
-  float key=max(dot(n,normalize(vec3(-.36,.64,.79))),0.0);
-  float fill=max(dot(n,normalize(vec3(.82,.22,-.1))),0.0);
-  float under=max(dot(n,normalize(vec3(0.0,-0.92,0.38))),0.0);
-  float rim=pow(1.0-max(dot(n,normalize(vec3(0.0,0.0,1.0))),0.0),2.0);
-  vec3 col=base*(.77+.31*key+.11*fill);
-  col+=vec3(0.27,0.21,0.11)*under*0.58;
-  col+=vec3(0.13,0.11,0.08)*rim*0.15;
-  col=mix(col,col*vec3(1.06,1.04,.96),.25);
-  gl_FragColor=vec4(col,1.0);
+  vec3 albedo=texture2D(uTexture,vUV).rgb;
+  vec3 normal=normalize(vNorm);
+  // Soft overhead reflection, kept intentionally weak to preserve detail.
+  float key=max(dot(normal,normalize(vec3(-.42,.69,.67))),0.0);
+  float fill=max(dot(normal,normalize(vec3(.74,.15,-.2))),0.0);
+  // An invisible warm light is placed *beneath* the bills. Each fragment
+  // receives light according to its surface direction and distance.
+  vec3 lampPos=vec3(.30,-1.28,1.75);
+  vec3 lightVec=lampPos-vPosition;
+  float distanceToLamp=length(lightVec);
+  vec3 lampDir=lightVec/max(distanceToLamp,.001);
+  float diffuse=max(dot(normal,lampDir),0.0);
+  float falloff=1.0/(1.0+.65*distanceToLamp*distanceToLamp);
+  float beam=pow(max(dot(lampDir,normalize(vec3(.1,-.20,1.0))),0.0),2.0);
+  float warmLight=diffuse*falloff*(.7+.3*beam);
+  // The amber highlights follow the material, rather than forming a halo.
+  vec3 lighting=vec3(.63)+vec3(.22)*key+vec3(.08)*fill;
+  lighting+=vec3(1.00,.77,.42)*warmLight*1.85;
+  vec3 reflectDir=reflect(-lampDir,normal);
+  float glint=pow(max(dot(reflectDir,vec3(0.0,0.0,1.0)),0.0),21.0)*falloff;
+  vec3 color=albedo*lighting+vec3(.76,.58,.33)*glint*.10;
+  color=color/(vec3(1.0)+max(color-vec3(.85),vec3(0.0))*.35);
+  gl_FragColor=vec4(color,1.0);
  }`;
  function shader(gl,type,source){
   const s=gl.createShader(type);gl.shaderSource(s,source);gl.compileShader(s);
