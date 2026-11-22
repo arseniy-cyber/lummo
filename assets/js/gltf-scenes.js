@@ -143,22 +143,32 @@ catch(err){wrap.dataset.glError=err.message;console.warn('3D unavailable:',kind,
 }
 wraps.forEach(start);
 const ob=new IntersectionObserver(entries=>{for(const e of entries){const item=monitors.find(t=>t.wrap===e.target);if(item)item.visible=e.isIntersecting;}requestFrame();},{rootMargin:'350px'});monitors.forEach(item=>ob.observe(item.wrap));
-let raf=0,mouseX=0,mouseY=0,dragYaw=0,dragPitch=0,dragging=false;
+let raf=0,mouseX=0,mouseY=0,dragYaw=0,dragPitch=0,dragging=false,macDragYaw=0,macDragPitch=0;
 const phoneCanvas=document.querySelector('[data-gltf-scene=phone] canvas');
 if(phoneCanvas){let lastX=0,lastY=0;phoneCanvas.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;phoneCanvas.setPointerCapture(e.pointerId);phoneCanvas.classList.add('is-dragging');});phoneCanvas.addEventListener('pointermove',e=>{if(!dragging)return;dragYaw+=((e.clientX-lastX)/Math.max(200,phoneCanvas.clientWidth))*3.2;dragPitch=Math.max(-.56,Math.min(.56,dragPitch+(e.clientY-lastY)/Math.max(220,phoneCanvas.clientHeight)*1.02));lastX=e.clientX;lastY=e.clientY;requestFrame();});const end=()=>{dragging=false;phoneCanvas.classList.remove('is-dragging');};phoneCanvas.addEventListener('pointerup',end);phoneCanvas.addEventListener('pointercancel',end);phoneCanvas.addEventListener('lostpointercapture',end);}
+// Drag MacBook model directly; vertical gestures on touch remain native page scroll.
+const macCanvas=document.querySelector('[data-gltf-scene=macbook] canvas');
+if(macCanvas){let held=false,mx=0,my=0;
+ macCanvas.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;held=true;mx=e.clientX;my=e.clientY;if(e.pointerType==='mouse')macCanvas.setPointerCapture(e.pointerId);});
+ macCanvas.addEventListener('pointermove',e=>{if(!held)return;const dx=e.clientX-mx,dy=e.clientY-my;mx=e.clientX;my=e.clientY;
+  macDragYaw=Math.max(-1.25,Math.min(1.25,macDragYaw+dx/Math.max(200,macCanvas.clientWidth)*2.6));
+  if(e.pointerType!=='touch')macDragPitch=Math.max(-.35,Math.min(.35,macDragPitch+dy/Math.max(220,macCanvas.clientHeight)*1.2));
+  requestFrame();});
+ const end=()=>{held=false};macCanvas.addEventListener('pointerup',end);macCanvas.addEventListener('pointercancel',end);macCanvas.addEventListener('lostpointercapture',end);
+}
 addEventListener('pointermove',e=>{mouseX=(e.clientX/innerWidth-.5)*2;mouseY=(e.clientY/innerHeight-.5)*2;requestFrame();},{passive:true});addEventListener('scroll',requestFrame,{passive:true});addEventListener('resize',requestFrame,{passive:true});
 function requestFrame(){if(!raf)raf=requestAnimationFrame(draw);}
 function draw(t){raf=0;let activity=false;for(const item of monitors){if(!item.ready||!item.visible||document.hidden)continue;const {canvas,gl,kind,wrap,geometry}=item;const r=wrap.getBoundingClientRect(),w=Math.max(1,r.width),h=Math.max(1,r.height);let dpr=Math.min(matchMedia('(max-width:760px)').matches?2.35:1.8,devicePixelRatio||1);const budget=kind==='brick'?1900000:kind==='phone'?1700000:1650000;dpr=Math.max(1,Math.min(dpr,Math.sqrt(budget/(w*h))));if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);}gl.viewport(0,0,canvas.width,canvas.height);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
 const scene=wrap.closest('.chapter');const sr=scene.getBoundingClientRect();const span=Math.max(1,sr.height-innerHeight);let progress=C(-sr.top/span);
- if(kind==='brick'){
+ if(kind==='brick'||kind==='phone'||kind==='macbook'){
    if(item.smoothedProgress===undefined)item.smoothedProgress=progress;
-   item.smoothedProgress+=(progress-item.smoothedProgress)*(reduce?1:(kind==='phone'?.085:.155));
-   if(Math.abs(progress-item.smoothedProgress)>.0015)activity=true;progress=item.smoothedProgress;
+   const delta=progress-item.smoothedProgress;item.smoothedProgress+=delta*(reduce?1:(kind==='phone'?.095:kind==='macbook'?.13:.155));
+   if(Math.abs(delta)>.0009)activity=true;progress=item.smoothedProgress;
  }
  const smooth=S(progress);const model=types[kind];
 let yaw=.38+progress*.52+mouseX*.065, pitch=-.10+mouseY*.035, x=0, y=-.07,z=-8.4;
 if(kind==='phone'){yaw=3.04+progress*.28+mouseX*.035+dragYaw;pitch=-.15+dragPitch;x=.07;y=.02;z=-8.1;}
-if(kind==='macbook'){yaw=.025+progress*.15+mouseX*.028;pitch=-.025+progress*.02;z=-8.12;y=-.04;}
+if(kind==='macbook'){yaw=.025+progress*.15+mouseX*.028+macDragYaw;pitch=-.025+progress*.02+macDragPitch;z=-8.12;y=-.04;}
 if(kind==='brick'){yaw=.18+progress*.16;pitch=.14;y=0;z=-8.1;}
 let base=MM(move(x,y,z),MM(rotateY(yaw),MM(rotateX(pitch),MM(scale(model.scale),move(-model.center[0],-model.center[1],-model.center[2])))));
 if(kind==='brick'){

@@ -22,6 +22,8 @@ if(book){
  book.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();turn(e.key==='ArrowRight'?1:-1);}});
  book.addEventListener('touchstart',e=>{swipeStart=e.touches[0]?.clientX??null},{passive:true});
  book.addEventListener('touchend',e=>{if(swipeStart===null)return;const d=(e.changedTouches[0]?.clientX??swipeStart)-swipeStart;swipeStart=null;if(Math.abs(d)>62)turn(d<0?1:-1)},{passive:true});
+ // Cover can reopen at chapter one without changing the page-turn animation.
+ book.lumoReset=()=>{if(busy)return false;current=0;update();return true;};
  update();
 }
 // Service cards: click anywhere to flip, no decorative arrows or miniature controls.

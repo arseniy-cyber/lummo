@@ -33,32 +33,7 @@ if(mobile.matches){
   try{sessionStorage.setItem('lumo-mobile-v1015-info','1')}catch(e){}
  }
 
- // Clean DOM: convert card links into visually identical card containers with
- // an anchor inside and two proper sibling buttons, never nested interactive tags.
- const flipIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.7 6"/><path d="M20 4v7h-7"/></svg>';
- function makeButton(back){const b=document.createElement('button');b.type='button';b.className='v1015-flip-button '+(back?'v1015-flip-back':'v1015-flip-front');b.setAttribute('aria-label',back?'Повернуть карточку обратно':'Перевернуть карточку для подробностей');b.innerHTML=flipIcon;return b;}
- function wrapCard(a){if(!a||a.tagName!=='A'||a.dataset.v1015Wrapped)return a;
-  const box=document.createElement('article');box.className=a.className;for(const {name,value} of [...a.attributes]){if(name==='class'||name==='href'||name==='aria-label')continue;box.setAttribute(name,value);}box.dataset.v1015Wrapped='true';
-  const link=document.createElement('a');link.href=a.getAttribute('href')||'#';link.className='v1015-card-anchor';if(a.getAttribute('aria-label'))link.setAttribute('aria-label',a.getAttribute('aria-label'));while(a.firstChild)link.append(a.firstChild);box.append(link);a.replaceWith(box);return box;
- }
- for(const selector of ['.selected__project','.subpage--works .portfolio-tile']){
-  for(const a of $$(selector)){
-   const card=wrapCard(a),front=makeButton(false),back=makeButton(true);card.append(front,back);
-   const set=(isBack)=>{card.classList.toggle('is-flipped',isBack);front.setAttribute('aria-hidden',String(isBack));back.setAttribute('aria-hidden',String(!isBack));front.tabIndex=isBack?-1:0;back.tabIndex=isBack?0:-1;debug.flips++;};
-   front.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(true);});back.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();set(false);});set(false);
-  }
- }
- // Every service has an operable button on both sides. The existing handler
- // in interaction-v6.js stays the single source of the flip state.
- for(const card of $$('.service-flip')){
-  const button=$('.service-flip__toggle',card);if(!button)continue;
-  button.removeAttribute('aria-hidden');button.removeAttribute('tabindex');button.tabIndex=0;
-  button.setAttribute('aria-label','Перевернуть карточку: '+($('h2',card)?.textContent||'услуга'));
-  const back=makeButton(true);card.append(back);
-  back.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();button.click();});
-  const reflect=()=>{const opened=card.classList.contains('is-flipped');back.setAttribute('aria-hidden',String(!opened));back.tabIndex=opened?0:-1;button.setAttribute('aria-hidden',String(opened));button.tabIndex=opened?-1:0;debug.flips++;};
-  new MutationObserver(reflect).observe(card,{attributes:true,attributeFilter:['class']});reflect();
- }
+ // Flips are now handled by v1016.js with controls inside both physical faces.
  // Native CSS scroll-snap for the home gallery; prevent the old scroll timeline
  // from controlling it. The selected section no longer traps vertical movement.
  const track=$('.chapter--selected .selected__track');if(track)track.style.transform='none';
