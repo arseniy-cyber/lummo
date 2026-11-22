@@ -42,7 +42,7 @@ if(mobile.matches){
 
 // Laboratory virtual desktop/tablet/phone widths. The iframe's **layout viewport**
 // changes (not just its frame/container), so its media queries now reflect device mode.
-const frame=$('#lab-frame'),stage=$('#lab-stage');if(frame&&stage){
+const frame=$('#lab-frame'),stage=$('#lab-stage');if(frame&&stage&&!document.body.classList.contains('lumo-v1017')){
  const sizes={desktop:1280,tablet:820,phone:390};const buttons=$$('[data-device]');let mode='desktop';
  const apply=()=>{const width=sizes[mode],available=Math.max(210,stage.getBoundingClientRect().width||350);
   const scale=Math.min(1,available/width);const documentHeight=mode==='desktop'?1050:mode==='tablet'?1100:1450;
