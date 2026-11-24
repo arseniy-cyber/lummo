@@ -195,7 +195,10 @@ if(kind==='phone'){const narrow=matchMedia('(max-width:700px)').matches;yaw=(nar
 if(kind==='macbook'){yaw=.025+progress*.12+mouseX*.018+macVisibleYaw;pitch=-.025+progress*.02+macDragPitch;const aspect=Math.max(.68,w/Math.max(1,h));z=-Math.max(10.8,2.8+3.75/(.39*aspect));y=-.025;}
 if(kind==='brick'){yaw=.18+progress*.16;pitch=.14;y=0;z=-8.1;}
 if(kind==='orbit'){yaw=.46+progress*Math.PI*2;pitch=-.12+Math.sin(progress*Math.PI*2)*.15;x=0;y=0;z=-8.3;model.scale=1.85;}
-if(kind==='airliner'){const p=window.LUMO_CINEMA_PROGRESS||0; const a=S((p-.692)/.125),center=S((p-.660)/.116),distance=106*Math.pow(18.64/106,a); yaw=1.34*(1-S((p-.680)/.113));pitch=.11*(1-center); const aspect=w/h/Math.max(1,w/h/2.25); x=-1.30*(1-center)*distance*Math.tan(43*Math.PI/360)*aspect; y=-2.6*(1-center); z=-distance;model.scale=1;}
+if(kind==='airliner'){const p=window.LUMO_CINEMA_PROGRESS||0; const a=S((p-.692)/.125),center=S((p-.660)/.116),distance=106*Math.pow(18.64/106,a); yaw=1.34*(1-S((p-.680)/.113));pitch=.11*(1-center); const aspect=w/h/Math.max(1,w/h/2.25); const narrow=matchMedia('(max-width:700px), (pointer:coarse) and (max-height:600px)').matches;const halfWidth=distance*Math.tan(43*Math.PI/360)*aspect;
+// 32 world units safely contain the aircraft's rotated bounding sphere.
+// Translate the entire model outside the frustum before the first visible frame.
+x=-(narrow?((distance+32)*Math.tan(43*Math.PI/360)*aspect+32):1.30*halfWidth)*(1-center); y=-2.6*(1-center); z=-distance;model.scale=1;}
 let base=MM(move(x,y,z),MM(rotateZ(kind==='airliner'?.20*(1-S(((window.LUMO_CINEMA_PROGRESS||0)-.660)/.135)):0),MM(rotateY(yaw),MM(rotateX(pitch),MM(scale(model.scale),move(-model.center[0],-model.center[1],-model.center[2]))))));
 if(kind==='airliner'){
  const matrix=MM(perspective(w/h,.025,Math.max(1,w/h/2.25)),base);

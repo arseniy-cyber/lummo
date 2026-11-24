@@ -6,6 +6,8 @@ const $=(s,r=document)=>r.querySelector(s),all=(s,r=document)=>[...r.querySelect
 const world=$('#world-stage'),header=$('#site-header');
 const scenes={intro:$('#scene-intro'),gallery:$('#scene-gallery'),void:$('#scene-void'),device:$('#scene-device'),flight:$('#scene-flight'),process:$('#scene-process'),end:$('#scene-end')};
 const camera=$('#intro-camera'),introRest=$('#intro-rest'),introLetter=$('#intro-letter-rest'),introWhite=$('#intro-white');
+const restWord=introRest.querySelector('.intro-word'),restCopy=introRest.querySelector('.intro-first');
+let flightRenderer=null; const planeMobile=()=>mobile.matches||matchMedia('(pointer:coarse) and (max-height:600px)').matches;
 const galleryTrack=$('#project-track'),galleryViewport=$('#project-viewport'),galleryTitle=$('.gallery-head'),galleryCount=$('#gallery-count'),galleryCurrent=$('#gallery-current'),photos=all('.statue-photo'),cards=all('.rail-work');
 const deviceModel=$('.device-model'),deviceCopy=$('.device-copy'),deviceUIs=all('.floating-ui'),plane=$('.plane-model'),planeFallback=$('.plane-fallback'),trails=$('#engine-trails'),processEditorial=$('.process-editorial'),orbit=$('#process-orbit'),orbitCards=all('.orbit-card'),endInner=$('.end-inner');
 const mobile=matchMedia('(max-width:700px)'),reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -43,15 +45,16 @@ let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,ac
  function requestInput(direction,distance){syncViewport();if(performance.now()<resizeUntil&&!activeGate)return false;if(activeGate)return true;const p=source();const span=spanHeight(),reach=Math.max(80,distance*1.25)/span;const candidates=direction>0?gates:[...gates].reverse();for(const g of candidates){if(direction>0&&p>=g.from-reach&&p<g.from+.0001)return startGate(g,false,performance.now());if(direction<0&&p<=g.to+reach&&p>=g.to-.0005)return startGate(g,true,performance.now())}return false;}
  const labels=['Вступление','Портфолио','Межпространство','3D','Самолёт','Процесс','Финал'];
 function measureAnchor(){
- const old=camera.style.transform;camera.style.transform='none';
+ const old=camera.style.transform,oldWord=restWord.style.transform,oldOrigin=restWord.style.transformOrigin,oldCopy=restCopy.style.transform,oldCopyOrigin=restCopy.style.transformOrigin;camera.style.transform='none';restWord.style.removeProperty('transform');restWord.style.removeProperty('transform-origin');restCopy.style.removeProperty('transform');restCopy.style.removeProperty('transform-origin');
  const r=introLetter.getBoundingClientRect(),wr=world.getBoundingClientRect();
  const svg=introLetter.querySelector('svg'), m=svg?.getScreenCTM();
  const point=m?new DOMPoint(23,58).matrixTransform(m):{x:r.left+r.width*.23,y:r.top+r.height*.49};
  const unit=m?Math.min(Math.abs(m.a),Math.abs(m.d)):r.width/100;
  anchor.x=point.x-wr.left;anchor.y=point.y-wr.top;
+ const wordRect=restWord.getBoundingClientRect();anchor.wordX=point.x-wordRect.left;anchor.wordY=point.y-wordRect.top;const copyRect=restCopy.getBoundingClientRect();anchor.copyX=point.x-copyRect.left;anchor.copyY=point.y-copyRect.top;
  anchor.zoom=Math.max(wr.width/(unit*20),wr.height/(unit*100))*1.20;
  camera.style.transformOrigin=`${anchor.x}px ${anchor.y}px`;
- camera.style.transform=old;
+ camera.style.transform=old;if(oldWord)restWord.style.setProperty('transform',oldWord,'important');if(oldOrigin)restWord.style.transformOrigin=oldOrigin;if(oldCopy)restCopy.style.setProperty('transform',oldCopy,'important');if(oldCopyOrigin)restCopy.style.transformOrigin=oldCopyOrigin;
 }
 function set(node,opacity,enable=true){
  if(!node)return;
@@ -83,10 +86,30 @@ function render(p){
  const approach=smooth(.004,.246,p);
  const scale=Math.exp(Math.log(anchor.zoom||40)*approach);
  const zooming=p>.004&&p<.253;
- if(introRest){introRest.hidden=zooming;introRest.inert=zooming;}
- camera.classList.toggle('qa11-zooming',zooming);
- camera.style.transform=zooming?`translate(${((w*.5-anchor.x)*approach).toFixed(2)}px,${((h*.5-anchor.y)*approach).toFixed(2)}px) scale(${scale.toFixed(4)})`:'none';
- camera.style.setProperty('--intro-t',smooth(.07,.195,p).toFixed(3));
+ // Desktop: move the genuine logo and copy instead of rasterising an entire
+ // oversized camera layer. Keep the same DOM content for both directions.
+ if(!planeMobile()){
+  introRest.hidden=false;introRest.inert=zooming;
+  camera.classList.remove('qa11-zooming');camera.style.transform='none';
+  // One shared projection for all typography. Slower initial push keeps the
+  // full composition in frame for longer on the return. The copy is never
+  // independently faded or swapped in at rest.
+  const push=smooth(.004,.246,p), desktopApproach=push*push;
+  const zoom=Math.exp(Math.log(anchor.zoom||40)*desktopApproach);
+  const dx=(w*.5-anchor.x)*desktopApproach,dy=(h*.5-anchor.y)*desktopApproach;
+  const translation=`translate(${dx.toFixed(2)}px,${dy.toFixed(2)}px)`;
+  restWord.style.transformOrigin=`${anchor.wordX||0}px ${anchor.wordY||0}px`;
+  restWord.style.setProperty('transform',zooming?`${translation} translateY(-50%) scale(${zoom.toFixed(4)})`:'translateY(-50%)','important');
+  restCopy.style.transformOrigin=`${anchor.copyX||0}px ${anchor.copyY||0}px`;
+  restCopy.style.setProperty('transform',zooming?`${translation} translateX(-50%) scale(${zoom.toFixed(4)})`:'translateX(-50%)','important');
+  restCopy.style.setProperty('opacity','1','important');
+ }else{
+  restWord.style.removeProperty('transform');restWord.style.removeProperty('transform-origin');restCopy.style.removeProperty('transform');restCopy.style.removeProperty('transform-origin');restCopy.style.removeProperty('opacity');
+  introRest.hidden=zooming;introRest.inert=zooming;
+  camera.classList.toggle('qa11-zooming',zooming);
+  camera.style.transform=zooming?`translate(${((w*.5-anchor.x)*approach).toFixed(2)}px,${((h*.5-anchor.y)*approach).toFixed(2)}px) scale(${scale.toFixed(4)})`:'none';
+  camera.style.setProperty('--intro-t',smooth(.07,.195,p).toFixed(3));
+ }
  introWhite.style.opacity=0;
  const hint=$('#scroll-hint');if(hint)hint.style.opacity=(1-smooth(.08,.20,p)).toFixed(4);
  set(scenes.intro,p<.253?1:0);
@@ -152,11 +175,16 @@ function render(p){
  set(scenes.flight,isPlane?1:0,false);
  const flight=smooth(flightStart,cut,p),bank=smooth(.683,.795,p);
  const approachFlight=smooth(.692,cut,p);
- const x=-w*.79*(1-smooth(.660,.793,p));
+ // Start beyond the left edge on mobile, even with the full aircraft silhouette.
+ const x=-w*(planeMobile()?1.32:.79)*(1-smooth(.660,.793,p));
  const y=h*.12*(1-smooth(.660,.800,p));
  const planeScale=.16*Math.exp(Math.log(90/.16)*approachFlight);
  planeFallback.style.transform=`translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) rotate(${(-11*(1-bank)).toFixed(2)}deg) scale(${planeScale.toFixed(3)})`;
- planeFallback.style.opacity=plane.classList.contains('has-webgl')?'0':'1';
+ // Freeze the renderer for a single flight, so late GLB readiness cannot pop into view.
+ if(isPlane&&flightRenderer===null)flightRenderer=plane.classList.contains('has-webgl')?'webgl':'fallback';
+ if(!isPlane)flightRenderer=null;
+ plane.classList.toggle('qa15-flight-fallback',flightRenderer==='fallback');
+ planeFallback.style.opacity=(flightRenderer==='webgl'||(!isPlane&&plane.classList.contains('has-webgl')))?'0':'1';
  const surface=$('.plane-surface-cover');if(surface)surface.style.opacity=0;
  const trailOpacity=band(.667,.690,.786,.806,p)*.85;
  trails.style.opacity=trailOpacity.toFixed(3);
@@ -165,10 +193,10 @@ function render(p){
  // The fallback follows the visible static aircraft rather than the screen centre.
  const projected=window.LUMO_AIRLINER_ENGINE_POINTS;
  const movingImg=planeFallback.querySelector('img');
- const rect=isPlane&&!plane.classList.contains('has-webgl')?movingImg?.getBoundingClientRect():null,wr=isPlane?world.getBoundingClientRect():null;
+ const rect=isPlane&&flightRenderer!=='webgl'?movingImg?.getBoundingClientRect():null,wr=isPlane?world.getBoundingClientRect():null;
  const fallbackPoints=rect?[{x:(rect.left-wr.left+rect.width*.392)/w,y:(rect.top-wr.top+rect.height*.546)/h,tailX:(rect.left-wr.left+rect.width*.44)/w,tailY:(rect.top-wr.top+rect.height*.51)/h},
    {x:(rect.left-wr.left+rect.width*.599)/w,y:(rect.top-wr.top+rect.height*.546)/h,tailX:(rect.left-wr.left+rect.width*.56)/w,tailY:(rect.top-wr.top+rect.height*.51)/h}]:[];
- const positions=plane.classList.contains('has-webgl')&&Array.isArray(projected)&&projected.length===2?projected:fallbackPoints;
+ const positions=flightRenderer==='webgl'&&Array.isArray(projected)&&projected.length===2?projected:fallbackPoints;
  const traces=all('.jet-trace',trails);
  const updateTrails=(points)=>points.forEach((eng,i)=>{
    if(!Number.isFinite(eng.x)||!Number.isFinite(eng.y))return;
