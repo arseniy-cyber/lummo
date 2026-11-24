@@ -22,7 +22,7 @@ let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,ac
  const gates=[{name:'intro',from:0,to:.286,duration:2300,backDuration:1900},{name:'flight',from:.660,to:.823,duration:4200},{name:'sand',from:.936,to:.958,duration:1850,backDuration:1700}];
  const flightTo=gates.find(g=>g.name==='flight').to;
  let activeGate=null,previousSource=0,flightDone=false,flightAuto=null;
- let touchStartY=null,touchStartX=null,touchDirection=null;
+ let touchStartY=null,touchStartX=null,touchDirection=null, modelGesture=false;let lastViewW=innerWidth,lastViewH=innerHeight,resizeUntil=0, lastSpan=0, resizeHold=0;
  const spanHeight=()=>Math.max(1,root.offsetHeight-world.clientHeight);
  function scrollProgress(p){const rect=root.getBoundingClientRect(),span=spanHeight();window.scrollTo({top:scrollY+rect.top+p*span,behavior:'instant'})}
  function startGate(g,reverse,t){if(activeGate)return false;const preStart=g.name==='sand'?g.from:Math.max(g.from-.04,Math.min(g.from,current));const preDuration=!reverse&&g.name==='sand'?140:!reverse&&g.name==='flight'&&preStart<g.from-.002?360:0;activeGate={g,reverse,start:t,preStart,preDuration};flightAuto=g.name==='flight'?activeGate:null;current=reverse?g.to:preDuration?preStart:g.from;target=current;previousSource=current;document.body.classList.add('qa5-transition-running');document.body.dataset.transition=g.name;document.body.dataset.direction=reverse?'back':'forward';scrollProgress(current);render(current);if(g.name==='sand'&&!reverse)activeGate.start=performance.now();schedule();return true;}
@@ -36,7 +36,7 @@ let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,ac
   for(const g of gates){if(raw>g.from&&raw<g.to-.00015){return startGate(g,back||(!forward&&raw>(g.from+g.to)/2),t)}}
   previousSource=raw;flightDone=raw>=flightTo-.00015;return false;
  }
- function requestInput(direction,distance){if(activeGate)return true;const p=source();const span=spanHeight(),reach=Math.max(80,distance*1.25)/span;const candidates=direction>0?gates:[...gates].reverse();for(const g of candidates){if(direction>0&&p>=g.from-reach&&p<g.from+.0001)return startGate(g,false,performance.now());if(direction<0&&p<=g.to+reach&&p>=g.to-.0005)return startGate(g,true,performance.now())}return false;}
+ function requestInput(direction,distance){syncViewport();if(performance.now()<resizeUntil&&!activeGate)return false;if(activeGate)return true;const p=source();const span=spanHeight(),reach=Math.max(80,distance*1.25)/span;const candidates=direction>0?gates:[...gates].reverse();for(const g of candidates){if(direction>0&&p>=g.from-reach&&p<g.from+.0001)return startGate(g,false,performance.now());if(direction<0&&p<=g.to+reach&&p>=g.to-.0005)return startGate(g,true,performance.now())}return false;}
  const labels=['Вступление','Портфолио','Межпространство','3D','Самолёт','Процесс','Финал'];
 function measureAnchor(){
  const old=camera.style.transform;camera.style.transform='none';
@@ -184,12 +184,12 @@ function render(p){
  // The scene settles first; orbiting only starts after further wheel movement.
  const processProgress=clamp((p-.850)/.082);
  const orbitRotation=processProgress*Math.PI*2;
- const rx=sm?Math.min(127,w*.30):Math.min(w*.19,280),rz=sm?94:215,ry=sm?Math.min(27,h*.045):49;
+ const rx=sm?Math.min(155,w*.32):Math.min(w*.19,280),rz=sm?120:215,ry=sm?Math.min(36,h*.052):49;
  orbitCards.forEach((card,i)=>{
   const theta=i*Math.PI*2/5-orbitRotation;
   const x=Math.sin(theta)*rx;
   const z=Math.cos(theta)*rz;
-  const y=Math.sin(theta+Math.PI/5)*ry;
+  const y=sm?Math.cos(theta)*ry:Math.sin(theta+Math.PI/5)*ry;
   const yaw=theta*180/Math.PI;
   const scale=.78+.22*(z/rz+1)/2;
   card.style.transform=`translate3d(${x.toFixed(2)}px,${y.toFixed(2)}px,${z.toFixed(2)}px) rotateY(${yaw.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
@@ -221,7 +221,8 @@ function render(p){
 }
 function source(){const r=root.getBoundingClientRect();return r.top>=-2?0:clamp(-r.top/spanHeight())}
 function schedule(){if(!raf)raf=requestAnimationFrame(tick)}
-function tick(t){raf=0;const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000||.016));lastTime=t;target=source();for(const g of gates)if(Math.abs(target-g.to)<.00012)target=g.to;
+function tick(t){raf=0;syncViewport();const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000||.016));lastTime=t;target=source();for(const g of gates)if(Math.abs(target-g.to)<.00012)target=g.to;
+ if(!activeGate&&t<resizeUntil){target=current=previousSource=resizeHold;scrollProgress(resizeHold);render(current);schedule();return;}
  if(gateTick(t,target))return;
  const response=reduced?1:(1-Math.exp(-delta*(mobile.matches?((target>=.286&&target<.49)?5.8:8):7.5)));
  current=target===0?0:lerp(current,target,response);
@@ -229,7 +230,8 @@ function tick(t){raf=0;const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000|
  render(current);
  if(current!==target)schedule();
 }
-function resize(){measureAnchor();schedule()}
+function syncViewport(){const span=spanHeight();const changed=lastViewW!==innerWidth||lastViewH!==innerHeight||(lastSpan>0&&Math.abs(span-lastSpan)>2);lastViewW=innerWidth;lastViewH=innerHeight;lastSpan=span;if(!changed||activeGate||reduced)return;const wasBelow=previousSource>=.999&&root.getBoundingClientRect().bottom<=0;if(wasBelow)return;resizeHold=performance.now()<resizeUntil?resizeHold:previousSource;resizeUntil=performance.now()+430;target=current=previousSource=resizeHold;scrollProgress(resizeHold);}
+function resize(){syncViewport();measureAnchor();schedule()}
 // A restored document must never resume a half-painted intro or an unfinished gate.
 function resetIntro(){if(reduced){window.scrollTo({top:0,behavior:"instant"});return;}if(raf)cancelAnimationFrame(raf);raf=0;activeGate=null;flightAuto=null;flightDone=false;lastTime=0;lastPair=-1;lastOrbit=-1;current=target=previousSource=0;document.body.classList.remove('qa5-transition-running');delete document.body.dataset.transition;delete document.body.dataset.direction;window.scrollTo({top:0,behavior:'instant'});measureAnchor();render(0);schedule();}
 function homeLink(e){const a=e.target.closest?.('a[href]');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;if(!/^(?:\.\/)?index\.html(?:#(?:main)?)?$/.test(a.getAttribute('href')||''))return;e.preventDefault();resetIntro();}
@@ -239,18 +241,19 @@ addEventListener('pageshow',e=>{if(reduced)return;if(!location.hash){resetIntro(
 addEventListener('pagereveal',e=>{if(e.viewTransition){e.viewTransition.skipTransition();}if(!location.hash)resetIntro();});
 if(reduced){document.body.classList.add('lumo-static'); for(const scene of Object.values(scenes))scene.style.removeProperty('visibility'); return;}
 addEventListener('wheel',e=>{if(e.ctrlKey||e.target.closest?.('#site-header,.mobile-nav,.preview-overlay')||Math.abs(e.deltaX)>Math.abs(e.deltaY))return;if(activeGate){e.preventDefault();return}const d=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);if(Math.abs(d)>1&&requestInput(Math.sign(d),Math.abs(d)))e.preventDefault()},{passive:false});
-addEventListener('touchstart',e=>{const ignore=e.touches.length!==1||e.target.closest?.('#site-header,.mobile-nav,.preview-overlay,input,textarea,select,button');touchStartY=ignore?null:e.touches[0].clientY;touchStartX=ignore?null:e.touches[0].clientX;touchDirection=null},{passive:true});
-addEventListener('touchmove',e=>{if(e.touches.length!==1||touchStartY===null)return;const y=e.touches[0].clientY,x=e.touches[0].clientX,d=touchStartY-y,dx=touchStartX-x;if(!touchDirection&&Math.max(Math.abs(dx),Math.abs(d))>8)touchDirection=Math.abs(d)>Math.abs(dx)*1.15?'vertical':'horizontal';if(touchDirection!=='vertical')return;if(activeGate){if(e.cancelable)e.preventDefault();return}if(Math.abs(d)>16&&requestInput(Math.sign(d),Math.abs(d))&&e.cancelable)e.preventDefault();},{passive:false});
-for(const type of ['touchend','touchcancel'])addEventListener(type,()=>{touchStartY=touchStartX=touchDirection=null},{passive:true});
+addEventListener('touchstart',e=>{modelGesture=(mobile.matches||matchMedia("(pointer:coarse) and (max-height:600px)").matches)&&!!e.target.closest?.(".device-model");const ignore=modelGesture||e.touches.length!==1||e.target.closest?.('#site-header,.mobile-nav,.preview-overlay,input,textarea,select,button');touchStartY=ignore?null:e.touches[0].clientY;touchStartX=ignore?null:e.touches[0].clientX;touchDirection=null},{passive:true});
+addEventListener('touchmove',e=>{if(modelGesture){if(e.cancelable)e.preventDefault();return;}if(e.touches.length!==1||touchStartY===null)return;const y=e.touches[0].clientY,x=e.touches[0].clientX,d=touchStartY-y,dx=touchStartX-x;if(!touchDirection&&Math.max(Math.abs(dx),Math.abs(d))>8)touchDirection=Math.abs(d)>Math.abs(dx)*1.15?'vertical':'horizontal';if(touchDirection!=='vertical')return;if(activeGate){if(e.cancelable)e.preventDefault();return}if(Math.abs(d)>16&&requestInput(Math.sign(d),Math.abs(d))&&e.cancelable)e.preventDefault();},{passive:false});
+for(const type of ['touchend','touchcancel'])addEventListener(type,()=>{touchStartY=touchStartX=touchDirection=null;modelGesture=false},{passive:true});
 addEventListener('keydown',e=>{if(e.target.closest?.('input,textarea,select,button,a,[contenteditable],#site-header,.preview-overlay')||document.body.classList.contains('is-menu-open'))return;const d=['ArrowDown','PageDown',' '].includes(e.key)?1:['ArrowUp','PageUp'].includes(e.key)?-1:0;if(d&&(activeGate||requestInput(e.shiftKey?-d:d,e.key.startsWith('Arrow')?80:innerHeight*.8)))e.preventDefault()});addEventListener('scroll',schedule,{passive:true});addEventListener('resize',resize,{passive:true});
 addEventListener('pageshow',schedule,{passive:true});document.addEventListener('visibilitychange',schedule);window.visualViewport?.addEventListener('resize',resize,{passive:true});
 addEventListener('pointermove',e=>{
+ if(e.pointerType==='touch')return;
  const x=(e.clientX/innerWidth-.5)*90,y=(e.clientY/innerHeight-.5)*90;
  scenes.device.style.setProperty('--mx',`${x.toFixed(1)}px`);
  scenes.device.style.setProperty('--my',`${y.toFixed(1)}px`);
 },{passive:true});
 if(document.fonts?.ready)document.fonts.ready.then(resize).catch(()=>{});
-if(!location.hash)window.scrollTo({top:0,behavior:'instant'});measureAnchor();target=source();for(const g of gates){if(target>g.from&&target<g.to){target=target<(g.from+g.to)/2?g.from-.00012:g.to;scrollProgress(target)}}current=target;previousSource=target;flightDone=target>=flightTo;render(current);
+if(!location.hash)window.scrollTo({top:0,behavior:'instant'});measureAnchor();lastSpan=spanHeight();target=source();for(const g of gates){if(target>g.from&&target<g.to){target=target<(g.from+g.to)/2?g.from-.00012:g.to;scrollProgress(target)}}current=target;previousSource=target;flightDone=target>=flightTo;render(current);
 if(new URLSearchParams(location.search).has("qa")){window.LUMO_QA_RENDER=render;window.LUMO_QA_GATE=(name,reverse,t=performance.now())=>startGate(gates.find(g=>g.name===name),reverse,t);}
 window.LUMO_JOURNEY_DEBUG=()=>({progress:current,target,activePair:lastPair,orbitStep:lastOrbit,modelLoaded,modelLoading,flightAuto:!!flightAuto,flightDone,gate:activeGate?.g.name||null,reverse:activeGate?.reverse||false,scene:current<.244?'intro':current<.489?'gallery':current<.575?'tunnel':current<.660?'device':current<.823?'flight':current<.936?'process':'end'});
 })();
