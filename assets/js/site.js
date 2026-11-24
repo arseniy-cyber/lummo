@@ -69,7 +69,7 @@ if(form){
    if(!res.ok||data?.success!==true)throw Error('Failed '+res.status);
    setStatus('Заявка отправлена. Я свяжусь с вами выбранным способом.');form.reset();
   }catch(err){setStatus(err?.name==='AbortError'?'Сервер долго не отвечает. Попробуйте позже.':'Не удалось отправить заявку. Проверьте соединение или напишите в Telegram.',true)}
-  finally{clearTimeout(id);pending=false;submit.disabled=false;submit.innerHTML='Отправить заявку <span>↗</span>';form.removeAttribute('aria-busy');if(needsTurnstile)window.lumoTurnstileReset?.()}
+  finally{clearTimeout(id);pending=false;submit.disabled=false;submit.innerHTML="Отправить заявку <svg class=\"qa12-arrow\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M4 12 12 4 M5 4h7v7\"/></svg>";form.removeAttribute('aria-busy');if(needsTurnstile)window.lumoTurnstileReset?.()}
  });
 }
 // Real lab iframe with all six settings; immediate postMessage update plus URL fallback.
@@ -90,7 +90,7 @@ if(labFrame){
  controls.forEach(c=>c.addEventListener('change',()=>{settings[c.dataset.lab]=c.value;push()}));
  labFrame.addEventListener('load',push);$('[data-lab-reset]')?.addEventListener('click',()=>{settings={...defaults};push()});
  $('[data-lab-copy]')?.addEventListener('click',async e=>{const button=e.currentTarget;const u=new URL(location.href);Object.entries(settings).forEach(([k,v])=>u.searchParams.set(k,v));try{await navigator.clipboard.writeText(u.href);button.textContent='Ссылка скопирована'}catch{button.textContent='Копирование недоступно'}});
- devices.forEach(b=>b.addEventListener('click',()=>{devices.forEach(x=>{x.classList.toggle('selected',b===x);x.setAttribute('aria-pressed',String(b===x));});frameWrap.classList.remove('is-tablet','is-phone');if(b.dataset.device!=='desktop')frameWrap.classList.add('is-'+b.dataset.device)}));
+ const sizes={desktop:[1440,900,'Компьютер'],tablet:[768,1024,'Планшет'],phone:[390,844,'Телефон']};let device='desktop';const available=frameWrap.parentElement;function fitDevice(){const [w,h,label]=sizes[device];const scale=Math.min(1,Math.max(1,available.clientWidth-4)/w);frameWrap.style.setProperty('--qa12-frame-w',w+'px');frameWrap.style.setProperty('--qa12-frame-h',h+'px');frameWrap.style.setProperty('--qa12-frame-scale',String(scale));frameWrap.style.setProperty('--qa12-fit-w',Math.round(w*scale)+'px');frameWrap.style.setProperty('--qa12-fit-h',Math.round(h*scale)+'px');labFrame.width=w;labFrame.height=h;frameWrap.dataset.previewDevice=device;const status=document.querySelector('#qa12-preview-size');if(status)status.textContent=label+' · '+w+' × '+h;devices.forEach(x=>{x.classList.toggle('selected',x.dataset.device===device);x.setAttribute('aria-pressed',String(x.dataset.device===device))});frameWrap.classList.toggle('is-tablet',device==='tablet');frameWrap.classList.toggle('is-phone',device==='phone');}devices.forEach(b=>b.addEventListener('click',()=>{device=b.dataset.device;fitDevice()}));if('ResizeObserver'in window)new ResizeObserver(fitDevice).observe(available);addEventListener('resize',fitDevice,{passive:true});fitDevice();
  push();
 }
 })();

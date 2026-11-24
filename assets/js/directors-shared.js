@@ -3,7 +3,7 @@
 (()=>{'use strict';
 const reduced=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const fine=matchMedia('(hover:hover) and (pointer:fine)').matches;
-const cards=[...document.querySelectorAll('.catalogue-item,.service-row,.process-step-page')];
+const narrow=matchMedia('(max-width:940px)').matches;const cards=[...document.querySelectorAll('.catalogue-item,.service-row,.process-step-page')].filter(e=>!narrow||!e.classList.contains('service-row'));
 if(!reduced){
  const observer=new IntersectionObserver(entries=>{
   for(const entry of entries){if(!entry.isIntersecting)continue;entry.target.classList.add('directed-in');observer.unobserve(entry.target)}
@@ -12,7 +12,7 @@ if(!reduced){
 }
 // Scroll-driven service focus, each row receives its own contextual material instead of a generic hover.
 const serviceRows=[...document.querySelectorAll('.service-row')];
-if(serviceRows.length&&!reduced){
+if(serviceRows.length&&!reduced&&!narrow){
  const images=['lav-parfum','lumo-parfum','iphone','mmrsiq','detailing','sad-kofe','shurubor'];
  serviceRows.forEach((row,i)=>row.style.setProperty('--service-image',`url(assets/img/editorial/${images[i%images.length]}.webp)`));
  let active=-1;

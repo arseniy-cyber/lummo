@@ -106,7 +106,7 @@ const types=[];
 function type(el){if(!el||el.querySelector('.lumo-text-layer'))return;const content=el.textContent.trim();if(!content)return;const base=document.createElement('span');base.className='lumo-original-text';base.textContent=content;const layer=document.createElement('span');layer.className='lumo-text-layer';layer.setAttribute('aria-hidden','true');el.classList.remove('studio-reveal','studio-reveal-text');el.classList.add('lumo-type-holder');el.replaceChildren(base,layer);types.push({el,layer,content,last:-1,value:null})}
 const about=$('.about-hero-stage'),aboutTitle=about?.querySelector('.about-hero-heading'),aboutEssay=about?.querySelector('.about-essay');
 const motion=about&&!reduce.matches&&!small.matches&&innerHeight>=600;
-if(motion){about.classList.add('is-motion');$$('p',aboutEssay).forEach(type)}
+if(motion){about.classList.add('is-motion');$$('p',aboutEssay).forEach(type)}else if(about&&small.matches){about.classList.add('qa12-mobile-about');if(!reduce.matches)$$('p',aboutEssay).forEach(type)}
 if(!reduce.matches)$$('.process-step-page h2,.process-step-page p').forEach(type);
 let raf=0,prevTime=0,aboutProgress=null;
 function update(now=performance.now()){raf=0;const H=innerHeight,dt=Math.min(.055,Math.max(.008,(now-prevTime)/1000||.016));prevTime=now;let ap=null,pending=false;

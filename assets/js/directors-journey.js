@@ -16,18 +16,18 @@ const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a||1));return t*t*(3-2*t)};
 const band=(a,b,c,d,p)=>smooth(a,b,p)*(1-smooth(c,d,p));
 const lerp=(a,b,t)=>a+(b-a)*t;
 let target=0,current=0,lastTime=0,raf=0,modelLoading=false,modelLoaded=false,lastPair=-1,lastOrbit=-1;
-let anchor={x:0,y:0};
+let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,active){if(!video)return;let st=mediaStates.get(video);if(!st){st={active:false,pending:false,failed:false};mediaStates.set(video,st)}if(!active){if(st.active||!video.paused)video.pause();st.active=false;st.failed=false;return}if(!st.active){st.active=true;st.failed=false;video.muted=true;video.defaultMuted=true;video.playsInline=true;}if(!video.paused||st.pending||st.failed)return;st.pending=true;Promise.resolve(video.play()).catch(()=>{st.failed=true}).finally(()=>{st.pending=false;if(!st.active)video.pause()})}function retryMedia(){for(const v of Object.values(videos)){if(!v)continue;const st=mediaStates.get(v);if(st?.active){st.failed=false;playScene(v,true)}}}addEventListener("touchend",retryMedia,{passive:true});addEventListener("pointerup",retryMedia,{passive:true});
  // Two independent gates. Input requests a transition; time, not wheel distance,
  // determines every subsequent animation frame in either direction.
- const gates=[{name:'flight',from:.660,to:.823,duration:4200},{name:'sand',from:.936,to:.958,duration:1850,backDuration:1700}];
- const flightTo=gates[0].to;
+ const gates=[{name:'intro',from:0,to:.286,duration:2300,backDuration:1900},{name:'flight',from:.660,to:.823,duration:4200},{name:'sand',from:.936,to:.958,duration:1850,backDuration:1700}];
+ const flightTo=gates.find(g=>g.name==='flight').to;
  let activeGate=null,previousSource=0,flightDone=false,flightAuto=null;
  let touchStartY=null,touchStartX=null,touchDirection=null;
  const spanHeight=()=>Math.max(1,root.offsetHeight-world.clientHeight);
  function scrollProgress(p){const rect=root.getBoundingClientRect(),span=spanHeight();window.scrollTo({top:scrollY+rect.top+p*span,behavior:'instant'})}
  function startGate(g,reverse,t){if(activeGate)return false;const preStart=g.name==='sand'?g.from:Math.max(g.from-.04,Math.min(g.from,current));const preDuration=!reverse&&g.name==='sand'?140:!reverse&&g.name==='flight'&&preStart<g.from-.002?360:0;activeGate={g,reverse,start:t,preStart,preDuration};flightAuto=g.name==='flight'?activeGate:null;current=reverse?g.to:preDuration?preStart:g.from;target=current;previousSource=current;document.body.classList.add('qa5-transition-running');document.body.dataset.transition=g.name;document.body.dataset.direction=reverse?'back':'forward';scrollProgress(current);render(current);if(g.name==='sand'&&!reverse)activeGate.start=performance.now();schedule();return true;}
  function gateTick(t,raw){
-  if(activeGate){const {g,reverse,start,preStart}=activeGate;let preDuration=activeGate.preDuration;const elapsed=t-start;if(g.name==='sand'&&!reverse&&elapsed>=preDuration&&elapsed<420&&document.querySelector('.qa5-sand')?.dataset.captureReady==='0'){preDuration=activeGate.preDuration=Math.min(420,elapsed+20)}if(preDuration&&elapsed<preDuration){const p=lerp(preStart,g.from,smooth(0,preDuration,elapsed));current=p;scrollProgress(p);render(p);schedule();return true}const a=clamp((elapsed-preDuration)/(reverse?(g.backDuration||g.duration):g.duration));const p=reverse?lerp(g.to,g.from-.00012,a):lerp(g.from,g.to,a);current=p;scrollProgress(p);render(p);if(a>=1){activeGate=null;flightAuto=null;flightDone=p>=flightTo;document.body.classList.remove('qa5-transition-running');delete document.body.dataset.transition;delete document.body.dataset.direction;target=p;previousSource=p;scrollProgress(p);schedule()}else schedule();return true;}
+  if(activeGate){const {g,reverse,start,preStart}=activeGate;let preDuration=activeGate.preDuration;const elapsed=t-start;if(g.name==='sand'&&!reverse&&elapsed>=preDuration&&elapsed<420&&document.querySelector('.qa5-sand')?.dataset.captureReady==='0'){preDuration=activeGate.preDuration=Math.min(420,elapsed+20)}if(preDuration&&elapsed<preDuration){const p=lerp(preStart,g.from,smooth(0,preDuration,elapsed));current=p;scrollProgress(p);render(p);schedule();return true}const a=clamp((elapsed-preDuration)/(reverse?(g.backDuration||g.duration):g.duration));const p=reverse?lerp(g.to,Math.max(0,g.from-.00012),a):lerp(g.from,g.to,a);current=p;scrollProgress(p);render(p);if(a>=1){activeGate=null;flightAuto=null;flightDone=p>=flightTo;document.body.classList.remove('qa5-transition-running');delete document.body.dataset.transition;delete document.body.dataset.direction;target=p;previousSource=p;scrollProgress(p);schedule()}else schedule();return true;}
   // Crossing a gate is detected even if a wheel/trackpad sends a large delta.
   const forward=raw>previousSource+.000015,back=raw<previousSource-.000015;
   if(forward){for(const g of gates){if(previousSource<g.from+.0001&&raw>=g.from)return startGate(g,false,t);}}
@@ -62,13 +62,13 @@ function start3D(){
  // Do not download fourteen megabytes of model scripts on a device without WebGL.
  if(document.createElement){try{const probe=document.createElement('canvas'),ctx=probe.getContext('webgl');if(!ctx){modelLoaded=true;document.body.classList.add('lumo-no-webgl');return}ctx.getExtension('WEBGL_lose_context')?.loseContext()}catch(_){modelLoaded=true;document.body.classList.add('lumo-no-webgl');return}}
  modelLoading=true;
- const scripts=['assets/js/model-phone-data.js','assets/js/screen-data.js','assets/js/phone-screen-v6.js','assets/js/model-plane-data.js','assets/js/model-orbit-data.js','assets/js/lumo-gltf-scenes.js'];
+ const loadScript=src=>new Promise((resolve,reject)=>{const el=document.createElement('script');el.src=src;el.async=false;el.onload=resolve;el.onerror=()=>reject(new Error(src+' not found'));document.body.append(el)});
  (async()=>{try{
-  for(const src of scripts)await new Promise((resolve,reject)=>{
-   const el=document.createElement('script');el.src=src;el.async=false;
-   el.onload=resolve;el.onerror=()=>reject(new Error(src+' not found'));
-   document.body.append(el);
-  });
+  // On an HTTP deployment, fetch original binary models directly. File previews retain the embedded fallback.
+  let binary=false;
+  if(/^https?:$/.test(location.protocol)){try{const files={phone:'phone-original.glb',airliner:'airliner-flight.glb',orbit:'orbit-chosen.glb'};const data=await Promise.all(Object.entries(files).map(async ([kind,name])=>{const response=await fetch('assets/models/'+name,{cache:'force-cache'});if(!response.ok)throw Error(name);const bytes=await response.arrayBuffer();if(new DataView(bytes).getUint32(0,true)!==0x46546c67)throw Error('Invalid '+name);return [kind,bytes]}));window.LUMO_ORIGINAL_GLB=Object.fromEntries(data);binary=true;}catch(e){console.warn('Binary model loading unavailable; using local compatibility data',e)}}
+  if(!binary){for(const src of ['assets/js/model-phone-data.js','assets/js/model-plane-data.js','assets/js/model-orbit-data.js'])await loadScript(src)}
+  await loadScript('assets/js/phone-screen-v6.js');await loadScript('assets/js/lumo-gltf-scenes.js');
   modelLoaded=true;document.dispatchEvent(new Event('lumo-cinema-update'));
  }catch(e){console.warn('3D renderer unavailable, static fallback will remain',e)}finally{modelLoading=false}})();
 }
@@ -78,7 +78,7 @@ function render(p){
  // 3+ viewport lengths to enter the white L slowly.
  const approach=smooth(.004,.246,p);
  const scale=Math.exp(Math.log(anchor.zoom||40)*approach);
- const zooming=approach>0&&p<.253;
+ const zooming=p>.004&&p<.253;
  if(introRest){introRest.hidden=zooming;introRest.inert=zooming;}
  camera.classList.toggle('qa11-zooming',zooming);
  camera.style.transform=zooming?`translate(${((w*.5-anchor.x)*approach).toFixed(2)}px,${((h*.5-anchor.y)*approach).toFixed(2)}px) scale(${scale.toFixed(4)})`:'none';
@@ -93,7 +93,7 @@ function render(p){
  galleryTrack.style.transform='none';
  cards.forEach((card,i)=>{
   const pair=Math.floor(i/2),phase=sm?section*8-i:section*4-pair;
-  const appear=smooth(.03,.28,phase), leave=smooth(.75,.97,phase);
+  const appear=sm?smooth(-.19,.24,phase):smooth(.03,.28,phase), leave=sm?smooth(.78,1.25,phase):smooth(.75,.97,phase);
   const alpha=appear*(1-leave),fromRight=i%2===1,side=fromRight?1:-1;
   const incoming=1-appear;
   const outgoing=leave;
@@ -214,17 +214,16 @@ function render(p){
  for(const [name,video] of Object.entries(videos)){
   const active=scenes[name].classList.contains('is-active')&&!document.hidden&&(name!=='process'||(p<.936&&!scenes.process.classList.contains('qa6-frozen')));
   if(!video)continue;
-  if(active&&video.paused){const out=video.play();if(out?.catch)out.catch(()=>{})}
-  else if(!active&&!video.paused)video.pause();
+  playScene(video,active);
  }
- if(p>.35&&!modelLoading&&!modelLoaded)start3D();
+ if(p>.35&&!modelLoading&&!modelLoaded)start3D();if(p>.44&&p<.57&&videos.device?.preload==='none')videos.device.preload='metadata';if(p>.68&&p<.81&&videos.process?.preload==='none')videos.process.preload='metadata';
  document.dispatchEvent(new Event('lumo-cinema-update'));
 }
-function source(){const r=root.getBoundingClientRect();return clamp(-r.top/spanHeight())}
+function source(){const r=root.getBoundingClientRect();return r.top>=-2?0:clamp(-r.top/spanHeight())}
 function schedule(){if(!raf)raf=requestAnimationFrame(tick)}
 function tick(t){raf=0;const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000||.016));lastTime=t;target=source();for(const g of gates)if(Math.abs(target-g.to)<.00012)target=g.to;
  if(gateTick(t,target))return;
- const response=reduced?1:(1-Math.exp(-delta*(mobile.matches?10:7.5)));
+ const response=reduced?1:(1-Math.exp(-delta*(mobile.matches?((target>=.286&&target<.49)?5.8:8):7.5)));
  current=target===0?0:lerp(current,target,response);
  if(Math.abs(current-target)<.000025)current=target;
  render(current);
@@ -236,7 +235,7 @@ function resetIntro(){if(reduced){window.scrollTo({top:0,behavior:"instant"});re
 function homeLink(e){const a=e.target.closest?.('a[href]');if(!a||e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;if(!/^(?:\.\/)?index\.html(?:#(?:main)?)?$/.test(a.getAttribute('href')||''))return;e.preventDefault();resetIntro();}
 document.addEventListener('click',homeLink);
 if('scrollRestoration' in history)history.scrollRestoration='manual';
-addEventListener('pageshow',e=>{if(reduced)return;if(!location.hash){resetIntro();requestAnimationFrame(()=>{if(scrollY<2)render(0)});}else resize();});
+addEventListener('pageshow',e=>{if(reduced)return;if(!location.hash){resetIntro();requestAnimationFrame(()=>{if(scrollY<3)render(0)});}else resize();});
 addEventListener('pagereveal',e=>{if(e.viewTransition){e.viewTransition.skipTransition();}if(!location.hash)resetIntro();});
 if(reduced){document.body.classList.add('lumo-static'); for(const scene of Object.values(scenes))scene.style.removeProperty('visibility'); return;}
 addEventListener('wheel',e=>{if(e.ctrlKey||e.target.closest?.('#site-header,.mobile-nav,.preview-overlay')||Math.abs(e.deltaX)>Math.abs(e.deltaY))return;if(activeGate){e.preventDefault();return}const d=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?innerHeight:1);if(Math.abs(d)>1&&requestInput(Math.sign(d),Math.abs(d)))e.preventDefault()},{passive:false});
@@ -244,7 +243,7 @@ addEventListener('touchstart',e=>{const ignore=e.touches.length!==1||e.target.cl
 addEventListener('touchmove',e=>{if(e.touches.length!==1||touchStartY===null)return;const y=e.touches[0].clientY,x=e.touches[0].clientX,d=touchStartY-y,dx=touchStartX-x;if(!touchDirection&&Math.max(Math.abs(dx),Math.abs(d))>8)touchDirection=Math.abs(d)>Math.abs(dx)*1.15?'vertical':'horizontal';if(touchDirection!=='vertical')return;if(activeGate){if(e.cancelable)e.preventDefault();return}if(Math.abs(d)>16&&requestInput(Math.sign(d),Math.abs(d))&&e.cancelable)e.preventDefault();},{passive:false});
 for(const type of ['touchend','touchcancel'])addEventListener(type,()=>{touchStartY=touchStartX=touchDirection=null},{passive:true});
 addEventListener('keydown',e=>{if(e.target.closest?.('input,textarea,select,button,a,[contenteditable],#site-header,.preview-overlay')||document.body.classList.contains('is-menu-open'))return;const d=['ArrowDown','PageDown',' '].includes(e.key)?1:['ArrowUp','PageUp'].includes(e.key)?-1:0;if(d&&(activeGate||requestInput(e.shiftKey?-d:d,e.key.startsWith('Arrow')?80:innerHeight*.8)))e.preventDefault()});addEventListener('scroll',schedule,{passive:true});addEventListener('resize',resize,{passive:true});
-addEventListener('pageshow',schedule,{passive:true});document.addEventListener('visibilitychange',schedule);
+addEventListener('pageshow',schedule,{passive:true});document.addEventListener('visibilitychange',schedule);window.visualViewport?.addEventListener('resize',resize,{passive:true});
 addEventListener('pointermove',e=>{
  const x=(e.clientX/innerWidth-.5)*90,y=(e.clientY/innerHeight-.5)*90;
  scenes.device.style.setProperty('--mx',`${x.toFixed(1)}px`);

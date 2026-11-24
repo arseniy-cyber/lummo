@@ -6,7 +6,7 @@ const C=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)),S=x=>{x=C(x);return x*x*(3-2*x)};
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wraps=[...document.querySelectorAll('[data-gltf-scene]')];if(!wraps.length)return;
 const types={phone:{center:[0,.06,0],scale:25.0},macbook:{center:[0,.115,0],scale:19.2},brick:{center:[.56,9.926,.35],scale:.18},airliner:{center:[0,3.5,0],scale:1},orbit:{center:[0,0,0],scale:1.75}};
-function parseB64(b64){const raw=atob(b64),arr=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);const v=new DataView(arr.buffer);if(v.getUint32(0,true)!==0x46546c67)throw Error('Invalid GLB');const size=v.getUint32(12,true);const json=JSON.parse(new TextDecoder().decode(arr.subarray(20,20+size)));return {json,bytes:arr,binStart:20+size+8};}
+function parseB64(b64){let arr;if(b64 instanceof ArrayBuffer)arr=new Uint8Array(b64);else{const raw=atob(b64);arr=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);}const v=new DataView(arr.buffer);if(v.getUint32(0,true)!==0x46546c67)throw Error('Invalid GLB');const size=v.getUint32(12,true);const json=JSON.parse(new TextDecoder().decode(arr.subarray(20,20+size)));return {json,bytes:arr,binStart:20+size+8};}
 function M(){return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);}
 function MM(a,b){const o=new Float32Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++)o[c*4+r]=a[r]*b[c*4]+a[4+r]*b[c*4+1]+a[8+r]*b[c*4+2]+a[12+r]*b[c*4+3];return o;}
 function INV(a){const out=M(),m=a;const b00=m[0]*m[5]-m[1]*m[4],b01=m[0]*m[6]-m[2]*m[4],b02=m[0]*m[7]-m[3]*m[4],b03=m[1]*m[6]-m[2]*m[5],b04=m[1]*m[7]-m[3]*m[5],b05=m[2]*m[7]-m[3]*m[6],b06=m[8]*m[13]-m[9]*m[12],b07=m[8]*m[14]-m[10]*m[12],b08=m[8]*m[15]-m[11]*m[12],b09=m[9]*m[14]-m[10]*m[13],b10=m[9]*m[15]-m[11]*m[13],b11=m[10]*m[15]-m[11]*m[14];let det=b00*b11-b01*b10+b02*b09+b03*b08-b04*b07+b05*b06;if(Math.abs(det)<1e-12)return M();det=1/det;
@@ -138,7 +138,7 @@ if(kind==='brick'&&imagesCaptured[0]){
 }
 }),count:meshes.reduce((n,m)=>n+m.length,0),animations:animations.length,hasSkin:!!skinData.length};}
 const monitors=[];function start(wrap){const canvas=wrap.querySelector('canvas'),kind=wrap.dataset.gltfScene;let gl;
-try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:kind==='orbit',powerPreference:'high-performance'})||canvas.getContext('experimental-webgl',{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:kind==='orbit'});if(!gl)throw Error('WebGL unavailable');gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);if(kind==='airliner')gl.disable(gl.CULL_FACE);else gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);const item={kind,wrap,canvas,gl,ready:false,visible:false,geometry:null,error:null};monitors.push(item);item.geometry=loadGlb(gl,window.LUMO_ORIGINAL_GLB[kind],kind);item.geometry.ready.then(()=>{item.ready=true;wrap.classList.add('has-webgl');if(kind==='airliner'){const fallback=wrap.querySelector('.plane-fallback');if(fallback)fallback.style.opacity='0';}document.dispatchEvent(new CustomEvent('lumo-scene-ready',{detail:{kind,ok:true}}));requestFrame();}).catch(err=>{item.error=err.message;document.dispatchEvent(new CustomEvent('lumo-scene-ready',{detail:{kind,ok:false}}));console.warn(kind,err)});}
+try{gl=canvas.getContext('webgl',{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:kind==='orbit',powerPreference:'high-performance'})||canvas.getContext('experimental-webgl',{alpha:true,antialias:true,depth:true,preserveDrawingBuffer:kind==='orbit'});if(!gl)throw Error('WebGL unavailable');gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);if(kind==='airliner')gl.disable(gl.CULL_FACE);else gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);const item={kind,wrap,canvas,gl,ready:false,visible:false,geometry:null,error:null};monitors.push(item);canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();item.ready=false;wrap.classList.remove('has-webgl');wrap.dataset.glError='context lost';});item.geometry=loadGlb(gl,window.LUMO_ORIGINAL_GLB[kind],kind);item.geometry.ready.then(()=>{item.ready=true;if(kind!=='phone')wrap.classList.add('has-webgl');if(kind==='airliner'){const fallback=wrap.querySelector('.plane-fallback');if(fallback)fallback.style.opacity='0';}document.dispatchEvent(new CustomEvent('lumo-scene-ready',{detail:{kind,ok:true}}));requestFrame();}).catch(err=>{item.error=err.message;document.dispatchEvent(new CustomEvent('lumo-scene-ready',{detail:{kind,ok:false}}));console.warn(kind,err)});}
 catch(err){wrap.dataset.glError=err.message;console.warn('3D unavailable:',kind,err.message);}
 }
 wraps.forEach(start);
@@ -191,7 +191,7 @@ const scene=wrap.closest('.chapter')||document.querySelector('#lx-experience')||
  }
  const smooth=S(progress);const model=types[kind];
 let yaw=.38+progress*.52+mouseX*.065, pitch=-.10+mouseY*.035, x=0, y=-.07,z=-8.4;
-if(kind==='phone'){yaw=2.58+progress*.8+mouseX*.05+dragYaw;pitch=-.09+dragPitch;x=0;y=.02;z=-7.15;}
+if(kind==='phone'){const narrow=matchMedia('(max-width:700px)').matches;yaw=(narrow?2.94:2.58)+progress*(narrow?.19:.8)+mouseX*.05+dragYaw;pitch=(narrow?-.035:-.09)+dragPitch;x=0;y=.02;z=narrow?-6.15:-7.15;}
 if(kind==='macbook'){yaw=.025+progress*.12+mouseX*.018+macVisibleYaw;pitch=-.025+progress*.02+macDragPitch;const aspect=Math.max(.68,w/Math.max(1,h));z=-Math.max(10.8,2.8+3.75/(.39*aspect));y=-.025;}
 if(kind==='brick'){yaw=.18+progress*.16;pitch=.14;y=0;z=-8.1;}
 if(kind==='orbit'){yaw=.46+progress*Math.PI*2;pitch=-.12+Math.sin(progress*Math.PI*2)*.15;x=0;y=0;z=-8.3;model.scale=1.85;}
@@ -234,6 +234,7 @@ if(kind==='brick'){
  if(kind==='phone')window.LUMO_PHONE_POSE={animationTime:time,opening:1-time/2};
  if(kind==='phone'||kind==='airliner')gl.disable(gl.BLEND);
  geometry.render(base,kind==='airliner'?perspective(w/h,.025,Math.max(1,w/h/2.25)):perspective(w/h),time,1);
+ if(kind==='phone'&&!wrap.classList.contains('has-webgl'))wrap.classList.add('has-webgl');
 }
 /* On-demand frames: stop drawing the unchanged three 3D scenes when the page is idle. */
 }
