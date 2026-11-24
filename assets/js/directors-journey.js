@@ -21,6 +21,10 @@ let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,ac
  // determines every subsequent animation frame in either direction.
  const gates=[{name:'intro',from:0,to:.286,duration:2300,backDuration:1900},{name:'flight',from:.660,to:.823,duration:4200},{name:'sand',from:.936,to:.958,duration:1850,backDuration:1700}];
  const flightTo=gates.find(g=>g.name==='flight').to;
+ const sandTo=gates.find(g=>g.name==='sand').to;
+ const mobileViewport=()=>mobile.matches||matchMedia('(pointer:coarse) and (max-height:600px)').matches;
+ const gateTolerance=()=>Math.max(.00012, (mobileViewport()?9:2)/spanHeight());
+ function snapEndpoint(p){const tolerance=gateTolerance();for(const g of gates)if(Math.abs(p-g.to)<=tolerance)return g.to;return p;}
  let activeGate=null,previousSource=0,flightDone=false,flightAuto=null;
  let touchStartY=null,touchStartX=null,touchDirection=null, modelGesture=false;let lastViewW=innerWidth,lastViewH=innerHeight,resizeUntil=0, lastSpan=0, resizeHold=0;
  const spanHeight=()=>Math.max(1,root.offsetHeight-world.clientHeight);
@@ -31,9 +35,9 @@ let anchor={x:0,y:0};const mediaStates=new WeakMap();function playScene(video,ac
   // Crossing a gate is detected even if a wheel/trackpad sends a large delta.
   const forward=raw>previousSource+.000015,back=raw<previousSource-.000015;
   if(forward){for(const g of gates){if(previousSource<g.from+.0001&&raw>=g.from)return startGate(g,false,t);}}
-  if(back){for(const g of [...gates].reverse()){if(previousSource>=g.to-.0005&&raw<g.to-.00015)return startGate(g,true,t);}}
+  if(back){for(const g of [...gates].reverse()){if(previousSource>=g.to-gateTolerance()&&raw<g.to-gateTolerance())return startGate(g,true,t);}}
   // Never allow a settled scroll position inside a cinematic gate.
-  for(const g of gates){if(raw>g.from&&raw<g.to-.00015){return startGate(g,back||(!forward&&raw>(g.from+g.to)/2),t)}}
+  for(const g of gates){if(raw>g.from&&raw<g.to-gateTolerance()){return startGate(g,back||(!forward&&raw>(g.from+g.to)/2),t)}}
   previousSource=raw;flightDone=raw>=flightTo-.00015;return false;
  }
  function requestInput(direction,distance){syncViewport();if(performance.now()<resizeUntil&&!activeGate)return false;if(activeGate)return true;const p=source();const span=spanHeight(),reach=Math.max(80,distance*1.25)/span;const candidates=direction>0?gates:[...gates].reverse();for(const g of candidates){if(direction>0&&p>=g.from-reach&&p<g.from+.0001)return startGate(g,false,performance.now());if(direction<0&&p<=g.to+reach&&p>=g.to-.0005)return startGate(g,true,performance.now())}return false;}
@@ -221,7 +225,7 @@ function render(p){
 }
 function source(){const r=root.getBoundingClientRect();return r.top>=-2?0:clamp(-r.top/spanHeight())}
 function schedule(){if(!raf)raf=requestAnimationFrame(tick)}
-function tick(t){raf=0;syncViewport();const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000||.016));lastTime=t;target=source();for(const g of gates)if(Math.abs(target-g.to)<.00012)target=g.to;
+function tick(t){raf=0;syncViewport();const delta=Math.min(.20,Math.max(.005,(t-lastTime)/1000||.016));lastTime=t;target=snapEndpoint(source());
  if(!activeGate&&t<resizeUntil){target=current=previousSource=resizeHold;scrollProgress(resizeHold);render(current);schedule();return;}
  if(gateTick(t,target))return;
  const response=reduced?1:(1-Math.exp(-delta*(mobile.matches?((target>=.286&&target<.49)?5.8:8):7.5)));
@@ -230,7 +234,12 @@ function tick(t){raf=0;syncViewport();const delta=Math.min(.20,Math.max(.005,(t-
  render(current);
  if(current!==target)schedule();
 }
-function syncViewport(){const span=spanHeight();const changed=lastViewW!==innerWidth||lastViewH!==innerHeight||(lastSpan>0&&Math.abs(span-lastSpan)>2);lastViewW=innerWidth;lastViewH=innerHeight;lastSpan=span;if(!changed||activeGate||reduced)return;const wasBelow=previousSource>=.999&&root.getBoundingClientRect().bottom<=0;if(wasBelow)return;resizeHold=performance.now()<resizeUntil?resizeHold:previousSource;resizeUntil=performance.now()+430;target=current=previousSource=resizeHold;scrollProgress(resizeHold);}
+function syncViewport(){const span=spanHeight(),widthChanged=lastViewW!==innerWidth;const changed=widthChanged||lastViewH!==innerHeight||(lastSpan>0&&Math.abs(span-lastSpan)>2);lastViewW=innerWidth;lastViewH=innerHeight;lastSpan=span;if(!changed||activeGate||reduced)return;
+ // The sticky world is released when the root bottom reaches its own height, not zero.
+ // Mobile browser chrome can change height during a swipe. Never pull a reader back from the final scene or footer.
+ const pastSticky=root.getBoundingClientRect().bottom<=world.clientHeight+4;
+ if(pastSticky||(mobileViewport()&&!widthChanged&&previousSource>=sandTo-gateTolerance())){resizeUntil=0;target=snapEndpoint(source());if(previousSource>=sandTo&&target<sandTo){target=sandTo;scrollProgress(sandTo)}current=previousSource=target;return;}
+ resizeHold=performance.now()<resizeUntil?resizeHold:previousSource;resizeUntil=performance.now()+430;target=current=previousSource=resizeHold;scrollProgress(resizeHold);}
 function resize(){syncViewport();measureAnchor();schedule()}
 // A restored document must never resume a half-painted intro or an unfinished gate.
 function resetIntro(){if(reduced){window.scrollTo({top:0,behavior:"instant"});return;}if(raf)cancelAnimationFrame(raf);raf=0;activeGate=null;flightAuto=null;flightDone=false;lastTime=0;lastPair=-1;lastOrbit=-1;current=target=previousSource=0;document.body.classList.remove('qa5-transition-running');delete document.body.dataset.transition;delete document.body.dataset.direction;window.scrollTo({top:0,behavior:'instant'});measureAnchor();render(0);schedule();}
