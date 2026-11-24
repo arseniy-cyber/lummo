@@ -1,7 +1,7 @@
 
 /* Lumo Sites select widgets: accessible trigger, real <select> retains form state. */
 (()=>{'use strict';
-for(const select of document.querySelectorAll('.brief-form select,.lab-control select')){
+for(const select of document.querySelectorAll('.brief-form select:not([data-native-select]),.lab-control select:not([data-native-select])')){
  const parent=select.parentElement;if(!parent||select.closest('.lumo-select'))continue;
  const wrap=document.createElement('div');wrap.className='lumo-select';
  parent.insertBefore(wrap,select);wrap.append(select);

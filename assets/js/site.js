@@ -89,8 +89,8 @@ if(labFrame){
  };
  controls.forEach(c=>c.addEventListener('change',()=>{settings[c.dataset.lab]=c.value;push()}));
  labFrame.addEventListener('load',push);$('[data-lab-reset]')?.addEventListener('click',()=>{settings={...defaults};push()});
- $('[data-lab-copy]')?.addEventListener('click',async e=>{const u=new URL(location.href);Object.entries(settings).forEach(([k,v])=>u.searchParams.set(k,v));try{await navigator.clipboard.writeText(u.href);e.currentTarget.textContent='Ссылка скопирована'}catch{e.currentTarget.textContent='Копирование недоступно'}});
- devices.forEach(b=>b.addEventListener('click',()=>{devices.forEach(x=>x.classList.toggle('selected',b===x));frameWrap.classList.remove('is-tablet','is-phone');if(b.dataset.device!=='desktop')frameWrap.classList.add('is-'+b.dataset.device)}));
+ $('[data-lab-copy]')?.addEventListener('click',async e=>{const button=e.currentTarget;const u=new URL(location.href);Object.entries(settings).forEach(([k,v])=>u.searchParams.set(k,v));try{await navigator.clipboard.writeText(u.href);button.textContent='Ссылка скопирована'}catch{button.textContent='Копирование недоступно'}});
+ devices.forEach(b=>b.addEventListener('click',()=>{devices.forEach(x=>{x.classList.toggle('selected',b===x);x.setAttribute('aria-pressed',String(b===x));});frameWrap.classList.remove('is-tablet','is-phone');if(b.dataset.device!=='desktop')frameWrap.classList.add('is-'+b.dataset.device)}));
  push();
 }
 })();
